@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web RPG Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+         .log-player {
+    color: #22c55e; /* สีเขียว */
+  }
+  .log-enemy {
+    color: #ef4444; /* สีแดง */
+  }
+    </style>
+  </head>
+  <body class="bg-gray-800 text-white">
+    <div
+      id="game-container"
+      class="max-w-lg mx-auto mt-10 p-5 bg-gray-900 rounded-lg shadow-lg"
+    >
+      <h1 class="text-2xl font-bold text-center mb-5">Web RPG Game</h1>
+      <div id="character-selection" class="text-center">
+        <h2 class="text-xl mb-3">Select Your Character</h2>
+        <button
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded m-2"
+          onclick="selectCharacter('Warrior')"
+        >
+          Warrior
+        </button>
+        <button
+          class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded m-2"
+          onclick="selectCharacter('Mage')"
+        >
+          Mage
+        </button>
+        <button
+          class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded m-2"
+          onclick="selectCharacter('Rogue')"
+        >
+          Rogue
+        </button>
+      </div>
+      <div
+        id="game-log"
+        class="hidden h-40 overflow-y-auto bg-gray-700 p-3 rounded mb-5"
+      ></div>
+      <div id="monster" class="hidden text-center mb-5">
+        <img id="monster-img" src="" alt="Monster" class="mx-auto w-24 h-24" />
+      </div>
+      <div id="controls" class="hidden flex flex-wrap justify-center gap-2">
+        <button
+          class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+          onclick="choosePath()"
+        >
+          Choose Path
+        </button>
+        <button
+          class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          onclick="attack()"
+        >
+          Attack
+        </button>
+        <button
+          class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          onclick="heal()"
+        >
+          Heal
+        </button>
+        <button
+          class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+          onclick="useSkill()"
+        >
+          Use Skill
+        </button>
+        <button
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          onclick="useItem()"
+        >
+          Use Item
+        </button>
+        <button
+          class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+          onclick="run()"
+        >
+          Run
+        </button>
+      </div>
+      <div
+        id="status-container"
+        class="hidden bg-gray-900 text-white p-5 rounded-lg shadow-lg mt-5"
+      >
+        <h2 class="text-xl font-bold mb-3">Character Status</h2>
+        <table class="table-auto w-full text-left">
+          <thead>
+            <tr>
+              <th class="px-4 py-2">Stat</th>
+              <th class="px-4 py-2">Value</th>
+            </tr>
+          </thead>
+          <tbody id="status-table">
+            <!-- Status rows will be dynamically updated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div
+      id="equipment-container"
+      class="hidden bg-gray-900 text-white p-5 rounded-lg shadow-lg mt-5"
+    >
+      <h2 class="text-xl font-bold mb-3">Equipment</h2>
+      <table class="table-auto w-full text-left">
+        <thead>
+          <tr>
+            <th class="px-4 py-2">Slot</th>
+            <th class="px-4 py-2">Item</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="border px-4 py-2">Weapon</td>
+            <td class="border px-4 py-2" id="weapon-slot">None</td>
+          </tr>
+          <tr>
+            <td class="border px-4 py-2">Armor</td>
+            <td class="border px-4 py-2" id="armor-slot">None</td>
+          </tr>
+          <tr>
+            <td class="border px-4 py-2">Accessory</td>
+            <td class="border px-4 py-2" id="accessory-slot">None</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div
+      id="status-upgrade-modal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+    >
+      <div
+        class="bg-gray-900 text-white p-5 rounded-lg shadow-lg max-w-sm w-full"
+      >
+        <h2 class="text-xl font-bold mb-3">Upgrade Status</h2>
+        <p class="mb-5">
+          You have <span id="status-points"></span> status points. Choose a stat
+          to upgrade:
+        </p>
+        <div class="flex flex-col gap-3">
+          <button
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('Str')"
+          >
+            Strength (Str)
+          </button>
+          <button
+            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('Int')"
+          >
+            Intelligence (Int)
+          </button>
+          <button
+            class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('Agi')"
+          >
+            Agility (Agi)
+          </button>
+          <button
+            class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('Vit')"
+          >
+            Vitality (Vit)
+          </button>
+          <button
+            class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('Dex')"
+          >
+            Dexterity (Dex)
+          </button>
+          <button
+            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            onclick="upgradeStat('LUK')"
+          >
+            Luck (LUK)
+          </button>
+        </div>
+        <div class="flex justify-end mt-5">
+          <button
+            class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onclick="closeStatusUpgradeModal()"
+          >
+            Finish
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="equipment-container" class="bg-gray-900 text-white p-5 rounded-lg shadow-lg mt-5">
+        <h2 class="text-xl font-bold mb-3">Equipment</h2>
+        <table class="table-auto w-full text-left">
+          <thead>
+            <tr>
+              <th class="px-4 py-2">Slot</th>
+              <th class="px-4 py-2">Item</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border px-4 py-2">Weapon</td>
+              <td class="border px-4 py-2" id="weapon-slot">None</td>
+            </tr>
+            <tr>
+              <td class="border px-4 py-2">Armor</td>
+              <td class="border px-4 py-2" id="armor-slot">None</td>
+            </tr>
+            <tr>
+              <td class="border px-4 py-2">Accessory</td>
+              <td class="border px-4 py-2" id="accessory-slot">None</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    <!-- Modal สำหรับเลือกไอเท็ม -->
+    <div
+      id="item-modal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+    >
+      <div
+        class="bg-gray-900 text-white p-5 rounded-lg shadow-lg max-w-sm w-full"
+      >
+        <h2 class="text-xl font-bold mb-3">Select an Item</h2>
+        <ul id="item-list" class="mb-5"></ul>
+        <div class="flex justify-end gap-2">
+          <button
+            class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onclick="closeItemModal()"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script>
+    const gameLog = document.getElementById("game-log");
+    const monsterImg = document.getElementById("monster-img");
+    const monsters = [
+      {
+        name: "Goblin",
+        img: "https://via.placeholder.com/100?text=Goblin",
+        hp: 30,
+        damage: 5,
+      },
+      {
+        name: "Orc",
+        img: "https://via.placeholder.com/100?text=Orc",
+        hp: 50,
+        damage: 10,
+      },
+      {
+        name: "Dragon",
+        img: "https://via.placeholder.com/100?text=Dragon",
+        hp: 100,
+        damage: 20,
+      },
+    ];
+
+    const characters = {
+      Warrior: {
+        hp: 100,
+        damage: 15,
+        skills: [
+          {
+            name: "Shield Block",
+            effect: () => 0,
+            description: "Blocks all damage for one turn.",
+          },
+          {
+            name: "Power Strike",
+            effect: () => Math.floor(Math.random() * 20) + 10,
+            description: "Deals 10-30 damage.",
+          },
+        ],
+        level: 1,
+        exp: 0,
+        expToLevelUp: 50,
+        status: { Str: 10, Int: 5, Agi: 7, Vit: 10, Dex: 8, LUK: 5 },
+        statusPoints: 0,
+      },
+      Mage: {
+        hp: 70,
+        damage: 20,
+        skills: [
+          {
+            name: "Fireball",
+            effect: () => Math.floor(Math.random() * 30) + 10,
+            description: "Deals 10-40 fire damage.",
+          },
+          {
+            name: "Ice Blast",
+            effect: () => Math.floor(Math.random() * 25) + 15,
+            description: "Deals 15-40 ice damage.",
+          },
+        ],
+        level: 1,
+        exp: 0,
+        expToLevelUp: 50,
+        status: { Str: 5, Int: 15, Agi: 8, Vit: 7, Dex: 6, LUK: 5 },
+        statusPoints: 0,
+      },
+      Rogue: {
+        hp: 80,
+        damage: 18,
+        skills: [
+          {
+            name: "Backstab",
+            effect: () => Math.floor(Math.random() * 25) + 15,
+            description: "Deals 15-40 damage.",
+          },
+          {
+            name: "Poison Dagger",
+            effect: () => Math.floor(Math.random() * 20) + 10,
+            description: "Deals 10-30 poison damage.",
+          },
+        ],
+        level: 1,
+        exp: 0,
+        expToLevelUp: 50,
+        status: { Str: 8, Int: 6, Agi: 12, Vit: 8, Dex: 10, LUK: 7 },
+        statusPoints: 0,
+      },
+    };
+
+    let currentMonster = null;
+    let player = null;
+    let skillUsed = false;
+    const inventory = {};
+    const equipment = {
+      weapon: null,
+      armor: null,
+      accessory: null,
+    };
+
+    function logMessage(message, type = "player") {
+  const p = document.createElement("p");
+  p.textContent = message;
+
+  // กำหนดคลาสสีตามประเภทข้อความ
+  if (type === "player") {
+    p.classList.add("log-player");
+  } else if (type === "enemy") {
+    p.classList.add("log-enemy");
+  }
+
+  gameLog.appendChild(p);
+  gameLog.scrollTop = gameLog.scrollHeight;
+}
+
+    function selectCharacter(character) {
+      player = {
+        ...characters[character],
+        maxHp: characters[character].hp,
+        class: character,
+      };
+      logMessage(
+        `You selected ${character}! HP: ${player.hp}, Damage: ${player.damage}, Skill: ${player.skill}`
+      );
+      document.getElementById("character-selection").classList.add("hidden");
+      document.getElementById("game-log").classList.remove("hidden");
+      document.getElementById("monster").classList.remove("hidden");
+      document.getElementById("controls").classList.remove("hidden");
+
+      updateStatusTable(); // อัปเดตตาราง Status
+    }
+
+    function choosePath() {
+      const randomIndex = Math.floor(Math.random() * monsters.length);
+      currentMonster = { ...monsters[randomIndex] };
+      monsterImg.src = currentMonster.img;
+      logMessage(
+        `You encountered a ${currentMonster.name}! HP: ${currentMonster.hp}`
+      );
+      skillUsed = false;
+    }
+
+    function attack() {
+  if (!currentMonster) {
+    logMessage("There is no monster to attack!", "player");
+    return;
+  }
+  const damage = Math.floor(Math.random() * player.damage) + 1;
+  currentMonster.hp -= damage;
+  logMessage(
+    `You attacked the ${currentMonster.name} and dealt ${damage} damage! Monster HP: ${currentMonster.hp}`,
+    "player"
+  );
+
+  if (currentMonster.hp <= 0) {
+    logMessage(`You defeated the ${currentMonster.name}!`, "player");
+    gainExp(20);
+    currentMonster = null;
+    monsterImg.src = "";
+    addItemToInventory("Healing Potion");
+  } else {
+    monsterAttack();
+  }
+}
+
+    function heal() {
+      const healAmount = Math.floor(Math.random() * 10) + 1;
+      player.hp = Math.min(player.hp + healAmount, player.maxHp);
+      logMessage(
+        `You healed yourself for ${healAmount} HP! Current HP: ${player.hp}`
+      );
+      if (currentMonster) {
+        monsterAttack();
+      }
+    }
+
+    function useSkill() {
+      if (!currentMonster) {
+        logMessage("There is no monster to use your skill on!");
+        return;
+      }
+
+      const skillList = player.skills
+        .map(
+          (skill, index) => `${index + 1}. ${skill.name} - ${skill.description}`
+        )
+        .join("\n");
+
+      const skillChoice = prompt(`Choose a skill:\n${skillList}`);
+
+      const skillIndex = parseInt(skillChoice) - 1;
+      if (skillIndex >= 0 && skillIndex < player.skills.length) {
+        const selectedSkill = player.skills[skillIndex];
+        const skillDamage = selectedSkill.effect();
+        currentMonster.hp -= skillDamage;
+
+        logMessage(
+          `You used "${selectedSkill.name}" and dealt ${skillDamage} damage! Monster HP: ${currentMonster.hp}`
+        );
+
+        if (currentMonster.hp <= 0) {
+          logMessage(
+            `You defeated the ${currentMonster.name} with your skill!`
+          );
+          gainExp(20);
+          currentMonster = null;
+          monsterImg.src = "";
+        } else {
+          monsterAttack();
+        }
+      } else {
+        logMessage("Invalid skill choice!");
+      }
+    }
+
+    function run() {
+      if (!currentMonster) {
+        logMessage("There is no monster to run from!");
+        return;
+      }
+      logMessage(`You ran away from the ${currentMonster.name}!`);
+      currentMonster = null;
+      monsterImg.src = "";
+    }
+
+    function monsterAttack() {
+  const damage = Math.floor(Math.random() * currentMonster.damage) + 1;
+  player.hp -= damage;
+  logMessage(
+    `The ${currentMonster.name} attacked you and dealt ${damage} damage! Your HP: ${player.hp}`,
+    "enemy"
+  );
+
+  if (player.hp <= 0) {
+    logMessage("You have been defeated! Game Over.", "enemy");
+    document.getElementById("controls").classList.add("hidden");
+  }
+}
+
+    function gainExp(amount) {
+      player.exp += amount;
+      logMessage(
+        `You gained ${amount} EXP! Current EXP: ${player.exp}/${player.expToLevelUp}`
+      );
+      if (player.exp >= player.expToLevelUp) {
+        levelUp();
+      }
+    }
+
+    function levelUp() {
+      player.level++;
+      player.exp -= player.expToLevelUp;
+      player.expToLevelUp = Math.floor(player.expToLevelUp * 1.5);
+      player.statusPoints += 5; // เพิ่มแต้ม Status Points
+      logMessage(`Congratulations! You leveled up to Level ${player.level}!`);
+
+      const choice = prompt(
+        "Choose your upgrade:\n1. Upgrade Status\n2. Learn Skill\n3. Receive Random Item"
+      );
+
+      if (choice === "1") {
+        openStatusUpgradeModal(); // เปิด Modal สำหรับอัป Status
+      } else if (choice === "2") {
+        learnSkill(); // เพิ่มฟังก์ชันสำหรับเรียนรู้สกิลใหม่
+      } else if (choice === "3") {
+        receiveRandomItem(); // รับไอเท็มแบบสุ่ม
+      } else {
+        logMessage("Invalid choice!");
+      }
+
+      updateStatusTable(); // อัปเดตตาราง Status
+    }
+
+    function addItemToInventory(item) {
+      if (inventory[item]) {
+        inventory[item]++;
+      } else {
+        inventory[item] = 1;
+      }
+      logMessage(`You received a ${item}!`);
+    }
+
+    function useItem() {
+    const itemList = document.getElementById("item-list");
+    itemList.innerHTML = ""; // ล้างรายการไอเท็มเก่า
+
+    // แสดงรายการไอเท็มใน Inventory
+    for (const item in inventory) {
+        if (inventory[item] > 0) {
+            const listItem = document.createElement("li");
+            listItem.className = "mb-2";
+            listItem.innerHTML = `
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+                    onclick="selectItem('${item}')">${item} (x${inventory[item]})</button>
+            `;
+            itemList.appendChild(listItem);
+        }
+    }
+
+    // แสดง Modal
+    document.getElementById("item-modal").classList.remove("hidden");
+}
+
+    function selectItem(item) {
+      if (inventory[item] > 0) {
+        inventory[item]--;
+        if (item === "Healing Potion") {
+          const healAmount = 30;
+          player.hp = Math.min(player.hp + healAmount, player.maxHp);
+          logMessage(
+            `You used a Healing Potion and restored ${healAmount} HP! Current HP: ${player.hp}`
+          );
+        } else if (typeof item === "object") {
+          equipItem(item); // สวมใส่อุปกรณ์
+        } else {
+          logMessage(`You used a ${item}!`);
+        }
+      }
+      closeItemModal();
+    }
+
+    function closeItemModal() {
+      document.getElementById("item-modal").classList.add("hidden");
+    }
+
+    function receiveRandomItem() {
+    const items = [
+        { name: "Iron Sword", type: "Weapon", effect: 5 },
+        { name: "Steel Armor", type: "Armor", effect: 20 },
+        { name: "Magic Ring", type: "Accessory", effect: 0 },
+        { name: "Healing Potion", type: "Consumable", effect: 30 },
+    ];
+    const randomIndex = Math.floor(Math.random() * items.length);
+    const randomItem = items[randomIndex];
+
+    if (randomItem.type === "Consumable") {
+        addItemToInventory(randomItem.name); // เพิ่มไอเท็มใน Inventory
+    } else {
+        addItemToInventory(randomItem); // เพิ่มอุปกรณ์ใน Inventory
+    }
+    logMessage(`You received a ${randomItem.name}!`);
+}
+    function equipItem(item) {
+    if (item.type === "Weapon") {
+        if (equipment.weapon) {
+            unequipItem("weapon"); // ถอดอาวุธเก่าออกก่อน
+        }
+        equipment.weapon = item;
+        player.damage += item.effect; // เพิ่ม Damage จากอาวุธ
+        document.getElementById("weapon-slot").textContent = item.name; // อัปเดตช่อง Weapon
+        logMessage(`You equipped a ${item.name}! Damage increased by ${item.effect}.`);
+    } else if (item.type === "Armor") {
+        if (equipment.armor) {
+            unequipItem("armor"); // ถอดเกราะเก่าออกก่อน
+        }
+        equipment.armor = item;
+        player.maxHp += item.effect; // เพิ่ม Max HP จากเกราะ
+        player.hp = Math.min(player.hp, player.maxHp); // ปรับ HP ให้ไม่เกิน Max HP
+        document.getElementById("armor-slot").textContent = item.name; // อัปเดตช่อง Armor
+        logMessage(`You equipped a ${item.name}! Max HP increased by ${item.effect}.`);
+    } else if (item.type === "Accessory") {
+        if (equipment.accessory) {
+            unequipItem("accessory"); // ถอดเครื่องประดับเก่าออกก่อน
+        }
+        equipment.accessory = item;
+        document.getElementById("accessory-slot").textContent = item.name; // อัปเดตช่อง Accessory
+        logMessage(`You equipped a ${item.name}!`);
+    }
+}
+
+function unequipItem(slot) {
+    if (equipment[slot]) {
+        const item = equipment[slot];
+        if (slot === "weapon") {
+            player.damage -= item.effect; // ลด Damage เมื่อถอดอาวุธ
+        } else if (slot === "armor") {
+            player.maxHp -= item.effect; // ลด Max HP เมื่อถอดเกราะ
+            player.hp = Math.min(player.hp, player.maxHp); // ปรับ HP ให้ไม่เกิน Max HP
+        }
+        logMessage(`You unequipped your ${item.name}.`);
+        equipment[slot] = null;
+        document.getElementById(`${slot}-slot`).textContent = "None"; // อัปเดตช่องให้เป็น None
+    } else {
+        logMessage(`You have no ${slot} equipped.`);
+    }
+}
+  </script>
+  <script>
+    function updateStatusTable() {
+      const statusTable = document.getElementById("status-table");
+      statusTable.innerHTML = ""; // ล้างข้อมูลเก่าในตาราง
+
+      // เพิ่มแถวสำหรับแต่ละ Status
+      for (const [key, value] of Object.entries(player.status)) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td class="border px-4 py-2">${key}</td>
+            <td class="border px-4 py-2">${value}</td>
+        `;
+        statusTable.appendChild(row);
+      }
+
+      // แสดงตาราง Status
+      document.getElementById("status-container").classList.remove("hidden");
+    }
+  </script>
+  <script>
+    function openStatusUpgradeModal() {
+      document.getElementById("status-points").textContent =
+        player.statusPoints;
+      document
+        .getElementById("status-upgrade-modal")
+        .classList.remove("hidden");
+    }
+
+    function closeStatusUpgradeModal() {
+      document.getElementById("status-upgrade-modal").classList.add("hidden");
+      updateStatusTable(); // อัปเดตตาราง Status หลังจากอัปเกรด
+    }
+
+    function upgradeStat(stat) {
+      if (player.statusPoints > 0) {
+        player.status[stat]++;
+        player.statusPoints--;
+        logMessage(`You increased ${stat} by 1!`);
+        document.getElementById("status-points").textContent =
+          player.statusPoints;
+
+        if (player.statusPoints === 0) {
+          closeStatusUpgradeModal();
+        }
+      } else {
+        logMessage("You have no status points left!");
+      }
+    }
+    function learnSkill() {
+    const newSkills = {
+        Warrior: ["Power Strike", "Defensive Stance"],
+        Mage: ["Ice Blast", "Lightning Bolt"],
+        Rogue: ["Poison Dagger", "Shadow Step"],
+    };
+
+    const availableSkills = newSkills[player.class]; // ดึงสกิลที่เกี่ยวข้องกับ class
+    if (!availableSkills) {
+        logMessage("No skills available for this class!");
+        return;
+    }
+
+    const skillChoice = prompt(
+        `Choose a new skill:\n1. ${availableSkills[0]}\n2. ${availableSkills[1]}`
+    );
+
+    if (skillChoice === "1" || skillChoice === "2") {
+        const selectedSkillName = availableSkills[parseInt(skillChoice) - 1];
+        const selectedSkill = {
+            name: selectedSkillName,
+            effect: () => Math.floor(Math.random() * 20) + 10, // ตัวอย่างดาเมจ
+            description: `Deals random damage with ${selectedSkillName}.`,
+        };
+
+        // เพิ่มสกิลใหม่เข้าไปใน player.skills
+        player.skills.push(selectedSkill);
+        logMessage(`You learned a new skill: ${selectedSkill.name}!`);
+    } else {
+        logMessage("Invalid choice for skill upgrade!");
+    }
+}
+  </script>
+</html>
