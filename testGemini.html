@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typing Practice</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- เพิ่ม SweetAlert2 -->
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen flex flex-col">
+  <div class="container mx-auto p-4 sm:p-6 flex-grow">
+    <h1 class="text-4xl sm:text-5xl font-bold text-center text-gray-100 mb-8">Typing Practice</h1>
+    
+    <!-- Language Selector -->
+    <div class="flex flex-col sm:flex-row justify-center items-center mb-6">
+      <label for="language" class="text-lg font-medium mb-2 sm:mb-0 sm:mr-4">Choose Language:</label>
+      <select id="language" class="border border-gray-700 bg-gray-800 text-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="eng">English</option>
+        <option value="thai">Thai</option>
+      </select>
+    </div>
+
+    <!-- Prompt -->
+    <div id="prompt" class="text-2xl sm:text-3xl font-semibold text-center bg-gray-800 text-blue-400 p-6 rounded-lg shadow-lg mb-6"></div>
+
+    <!-- Input Area -->
+    <textarea id="input" rows="2" placeholder="Start typing here..."
+      class="w-full border border-gray-700 bg-gray-800 text-gray-200 rounded-lg p-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6"></textarea>
+
+    <!-- Keyboard -->
+    <div id="keyboard" class="grid grid-cols-10 gap-2 mb-6 max-w-full mx-auto"></div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-6">
+      <div id="output" class="text-lg font-medium"></div>
+      <div id="speed" class="text-lg font-medium text-green-400"></div>
+      <div id="score" class="text-lg font-medium text-blue-400"></div>
+      <div id="timer" class="text-lg font-medium text-red-400"></div>
+    </div>
+
+    <!-- Score List -->
+    <ul id="scoreList" class="list-disc list-inside bg-gray-800 p-4 rounded-lg shadow-lg mb-6"></ul>
+
+    <!-- Reset Button -->
+    <button id="resetButton" class="hidden bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      Save
+    </button>
+
+    <!-- Leaderboard -->
+    <h2 class="text-3xl font-bold text-center text-gray-100 mt-10">Leaderboard</h2>
+    <div class="overflow-x-auto mt-6">
+      <table id="leaderboard" class="table-auto w-full bg-gray-800 rounded-lg shadow-lg">
+        <thead>
+          <tr class="bg-gray-700 text-gray-200">
+            <th class="px-4 py-2">Rank</th>
+            <th class="px-4 py-2">Name</th>
+            <th class="px-4 py-2">Score</th>
+            <th class="px-4 py-2">Speed (WPM)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Leaderboard entries will be added here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    const englishWords = ["keyboard", "run", "practice", "typing", "speed", "test"];
+    const thaiWords = ["คีย์บอร์ด", "วิ่ง", "ฝึกฝน", "พิมพ์", "ความเร็ว", "ทดสอบ"];
+    const keyboardLayout = {
+      eng: "qwertyuiopasdfghjklzxcvbnm",
+      thai: "ๆไำพะัีรนยบลฟหกดเ้่าสวง"
+    };
+
+    const languageSelect = document.getElementById("language");
+    const promptDiv = document.getElementById("prompt");
+    const inputArea = document.getElementById("input");
+    const keyboardDiv = document.getElementById("keyboard");
+    const outputDiv = document.getElementById("output");
+    const speedDiv = document.getElementById("speed");
+    const scoreDiv = document.getElementById("score");
+    const timerDiv = document.getElementById("timer");
+    const scoreList = document.getElementById("scoreList");
+    const resetButton = document.getElementById("resetButton");
+    const leaderboardTable = document.getElementById("leaderboard").querySelector("tbody");
+
+    let currentWords = [];
+    let currentWordIndex = 0;
+    let startTime = null;
+    let score = 0;
+    let questionNumber = 1;
+    let timer = null;
+    let wordScore = 100; // คะแนนเริ่มต้นของแต่ละคำ
+    let totalScore = 0; // คะแนนรวม
+    let maxScore = 0; // คะแนนเต็ม
+
+    
+    function generatePrompt() {
+      const language = languageSelect.value;
+      currentWords = language === "eng" ? englishWords : thaiWords;
+      currentWords = Array.from({ length: 5 }, () => currentWords[Math.floor(Math.random() * currentWords.length)]);
+      currentWordIndex = 0;
+      questionNumber = 1;
+      totalScore = 0;
+      maxScore = currentWords.length * 100; // คะแนนเต็ม
+      promptDiv.textContent = `${questionNumber}.${currentWords[currentWordIndex]}`;
+      inputArea.value = "";
+      inputArea.disabled = false;
+      startTime = null;
+      speedDiv.textContent = "";
+      outputDiv.textContent = "";
+      scoreList.innerHTML = ""; // ล้างรายการคะแนนก่อนเริ่มใหม่
+      renderKeyboard();
+      startTimer();
+    }
+
+    function resetGame() {
+      Swal.fire({
+        title: 'Enter your name',
+        input: 'text',
+        inputPlaceholder: 'Your name...',
+        showCancelButton: true,
+        confirmButtonText: 'Submit',
+        cancelButtonText: 'Cancel',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Please enter your name!';
+          }
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const playerName = result.value; // รับค่าชื่อผู้เล่นจาก Pop-up
+          const speed = calculateSpeed();
+          addToLeaderboard(playerName, totalScore, speed); // เพิ่มข้อมูลในตาราง
+          score = 0;
+          scoreDiv.textContent = `Score: ${score}`;
+          resetButton.style.display = "none";
+          generatePrompt();
+        }
+      });
+    }
+
+    function addToLeaderboard(name, score, speed) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td></td>
+        <td>${name}</td>
+        <td>${score}</td>
+        <td>${speed}</td>
+      `;
+      leaderboardTable.appendChild(row);
+      sortLeaderboard();
+    }
+
+    function sortLeaderboard() {
+      const rows = Array.from(leaderboardTable.children);
+      rows.sort((a, b) => {
+        const scoreA = parseInt(a.children[2].textContent, 10);
+        const scoreB = parseInt(b.children[2].textContent, 10);
+        return scoreB - scoreA; // เรียงจากคะแนนมากไปน้อย
+      });
+
+      leaderboardTable.innerHTML = "";
+      rows.forEach((row, index) => {
+        row.children[0].textContent = index + 1; // อัปเดตลำดับ
+        leaderboardTable.appendChild(row);
+      });
+    }
+
+    function calculateSpeed() {
+      if (!startTime || currentWordIndex === 0) return 0; // หากยังไม่มีเวลาเริ่มต้นหรือยังไม่มีคำที่พิมพ์สำเร็จ ให้คืนค่า 0
+      const elapsedTime = (Date.now() - startTime) / 1000 / 60; // เวลาเป็นนาที
+      const wordsTyped = currentWordIndex; // จำนวนคำที่พิมพ์ได้
+      const speed = Math.round(wordsTyped / elapsedTime); // คำนวณคำต่อนาที
+      speedDiv.textContent = `Speed: ${speed} words per minute`;
+      return speed;
+    }
+
+    function renderKeyboard() {
+      const language = languageSelect.value;
+      const layout = keyboardLayout[language];
+      keyboardDiv.innerHTML = "";
+      layout.split("").forEach((key) => {
+        const keyDiv = document.createElement("div");
+        keyDiv.className = "key border border-gray-600 rounded p-2 text-center bg-gray-700 text-gray-200 shadow-md";
+        keyDiv.textContent = key;
+        keyDiv.setAttribute("data-key", key); // เพิ่ม data-key เพื่อระบุปุ่ม
+        keyboardDiv.appendChild(keyDiv);
+      });
+    }
+
+    function highlightKey(key, isActive) {
+      const keyDiv = keyboardDiv.querySelector(`[data-key="${key}"]`);
+      if (keyDiv) {
+        if (isActive) {
+          keyDiv.classList.add("bg-blue-500", "text-white"); // เพิ่มสีเมื่อกด
+          keyDiv.classList.remove("bg-gray-700", "text-gray-200");
+        } else {
+          keyDiv.classList.remove("bg-blue-500", "text-white"); // ลบสีเมื่อปล่อย
+          keyDiv.classList.add("bg-gray-700", "text-gray-200");
+        }
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase(); // ตรวจจับตัวอักษรที่พิมพ์
+      highlightKey(key, true); // เปลี่ยนสีปุ่มที่ตรงกับตัวอักษร
+    });
+
+    document.addEventListener("keyup", (e) => {
+      const key = e.key.toLowerCase(); // ตรวจจับตัวอักษรที่พิมพ์
+      highlightKey(key, false); // คืนสีปุ่มเมื่อปล่อย
+    });
+
+    function startTimer() {
+      let timeLeft = 5; // 5 seconds per word
+      wordScore = 100; // Reset score for the current word
+      timerDiv.textContent = `Time left: ${timeLeft}s`;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft -= 0.1; // ลดเวลาเป็นระดับมิลลิวินาที
+        wordScore = Math.max(0, wordScore - 2.5); // ลดคะแนน 25 ต่อวินาที
+        timerDiv.textContent = `Time left: ${timeLeft.toFixed(1)}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          moveToNextWord(false); // Move to the next word without adding score
+        }
+      }, 100);
+    }
+
+    function moveToNextWord(isCorrect) {
+      if (isCorrect) {
+        score += wordScore; // เพิ่มคะแนนของคำที่พิมพ์ถูกต้อง
+        totalScore += wordScore; // เพิ่มคะแนนรวม
+        const listItem = document.createElement("li");
+        listItem.textContent = `ข้อ ${questionNumber}: ได้ ${wordScore} คะแนน`;
+        scoreList.appendChild(listItem);
+      } else {
+        const listItem = document.createElement("li");
+        listItem.textContent = `ข้อ ${questionNumber}: ผิด (0 คะแนน)`;
+        scoreList.appendChild(listItem);
+      }
+      currentWordIndex++;
+      questionNumber++;
+      if (currentWordIndex < currentWords.length) {
+        promptDiv.textContent = `${questionNumber}.${currentWords[currentWordIndex]}`;
+        inputArea.value = "";
+        startTimer();
+      } else {
+        // Completed all words
+        const speed = calculateSpeed();
+        scoreDiv.textContent = `คะแนนรวม: ${totalScore}/${maxScore}`;
+        outputDiv.textContent = `คุณพิมพ์ครบแล้ว! คะแนนรวม: ${totalScore}/${maxScore}`;
+        inputArea.disabled = true;
+        resetButton.style.display = "block";
+        clearInterval(timer);
+      }
+    }
+
+    inputArea.addEventListener("keydown", (e) => {
+      // ปิดการลบ
+      if (e.key === "Backspace") {
+        e.preventDefault();
+      }
+    });
+
+    inputArea.addEventListener("input", () => {
+      const typedText = inputArea.value.trim();
+      const currentWord = currentWords[currentWordIndex];
+
+      if (!startTime) startTime = Date.now(); // ตั้งค่าเวลาเริ่มต้นเมื่อพิมพ์ครั้งแรก
+
+      if (typedText !== currentWord.slice(0, typedText.length)) {
+        // หากพิมพ์ผิด ให้ถือว่าคำนั้นผิดทันที
+        clearInterval(timer);
+        moveToNextWord(false);
+      } else if (typedText === currentWord) {
+        // หากพิมพ์ถูกต้อง
+        clearInterval(timer);
+        moveToNextWord(true);
+      }
+    });
+
+    resetButton.addEventListener("click", resetGame);
+
+    languageSelect.addEventListener("change", generatePrompt);
+
+    generatePrompt();
+  </script>
+</body>
+</html>

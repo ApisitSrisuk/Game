@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #282c34;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+        }
+        h1 {
+            margin: 0;
+            padding: 10px;
+            font-size: 36px;
+        }
+        .game-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        #gameCanvas {
+            border: 1px solid black;
+            background-color: #f0f0f0;
+        }
+        .next-block-container {
+            text-align: center;
+        }
+        #nextBlockCanvas {
+            border: 1px solid black;
+            background-color: #f0f0f0;
+        }
+        #score {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        .leaderboard {
+            margin-top: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid white;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tetris</h1>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="200" height="400"></canvas>
+        <div class="next-block-container">
+            <h2>Next Block</h2>
+            <canvas id="nextBlockCanvas" width="100" height="100"></canvas>
+            <div id="score">Score: 0</div>
+        </div>
+    </div>
+    <div class="leaderboard">
+        <h2>Leaderboard</h2>
+        <table id="leaderboardTable">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- คะแนนจะถูกเพิ่มที่นี่ -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextBlockCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        const grid = 20; // ขนาดของแต่ละช่องในกริด
+        const rows = canvas.height / grid;
+        const cols = canvas.width / grid;
+
+        // กระดานเกม
+        const board = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+        // รูปร่างของบล็อกพร้อมสี
+        const shapes = [
+            { name: "T-Shape", shape: [[1, 1, 1], [0, 1, 0]], color: "purple" },
+            { name: "Square", shape: [[1, 1], [1, 1]], color: "yellow" },
+            { name: "Line", shape: [[1, 1, 1, 1]], color: "cyan" },
+            { name: "Z-Shape", shape: [[0, 1, 1], [1, 1, 0]], color: "red" },
+            { name: "S-Shape", shape: [[1, 1, 0], [0, 1, 1]], color: "green" }
+        ];
+
+        let currentBlock = getRandomBlock();
+        let nextBlock = getRandomBlock();
+        let currentShape = currentBlock.shape;
+        let currentColor = currentBlock.color;
+        let currentX = Math.floor(cols / 2) - 1;
+        let currentY = 0;
+        let frameCount = 0; // ตัวนับเฟรม
+        let score = 0;
+
+        // ฟังก์ชันสุ่มบล็อก
+        function getRandomBlock() {
+            return shapes[Math.floor(Math.random() * shapes.length)];
+        }
+
+        // ฟังก์ชันวาดกริด
+        function drawGrid() {
+            ctx.strokeStyle = '#ccc';
+            for (let x = 0; x < cols; x++) {
+                for (let y = 0; y < rows; y++) {
+                    ctx.strokeRect(x * grid, y * grid, grid, grid);
+                }
+            }
+        }
+
+        // ฟังก์ชันวาดบล็อก
+        function drawShape(ctx, shape, color, offsetX, offsetY) {
+            ctx.fillStyle = color;
+            for (let y = 0; y < shape.length; y++) {
+                for (let x = 0; x < shape[y].length; x++) {
+                    if (shape[y][x]) {
+                        ctx.fillRect((offsetX + x) * grid, (offsetY + y) * grid, grid, grid);
+                    }
+                }
+            }
+        }
+
+        // ฟังก์ชันวาดกระดาน
+        function drawBoard() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (board[y][x]) {
+                        ctx.fillStyle = board[y][x]; // ใช้สีที่เก็บไว้ในกระดาน
+                        ctx.fillRect(x * grid, y * grid, grid, grid);
+                    }
+                }
+            }
+        }
+
+        // ฟังก์ชันเพิ่มบล็อกลงกระดาน
+        function mergeBlockToBoard() {
+            for (let y = 0; y < currentShape.length; y++) {
+                for (let x = 0; x < currentShape[y].length; x++) {
+                    if (currentShape[y][x]) {
+                        board[currentY + y][currentX + x] = currentColor; // เก็บสีของบล็อกในกระดาน
+                    }
+                }
+            }
+        }
+
+        // ฟังก์ชันตรวจสอบแถวเต็ม
+        function checkFullRows() {
+            for (let y = 0; y < rows; y++) {
+                if (board[y].every(cell => cell !== 0)) {
+                    board.splice(y, 1); // ลบแถวที่เต็ม
+                    board.unshift(Array(cols).fill(0)); // เพิ่มแถวว่างด้านบน
+                    score += 10; // เพิ่มคะแนน
+                    document.getElementById('score').innerText = `Score: ${score}`;
+                }
+            }
+        }
+
+        // การควบคุมบล็อก
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft' && canMove(-1, 0)) {
+                currentX--; // เลื่อนไปทางซ้าย
+            } else if (event.key === 'ArrowRight' && canMove(1, 0)) {
+                currentX++; // เลื่อนไปทางขวา
+            } else if (event.key === 'ArrowDown' && canMove(0, 1)) {
+                currentY++; // เร่งความเร็วในการตก
+            } else if (event.key === 'ArrowUp') {
+                rotateShape(); // หมุนบล็อก
+            }
+        });
+
+        // ฟังก์ชันตรวจสอบการเคลื่อนที่
+        function canMove(dx, dy) {
+            for (let y = 0; y < currentShape.length; y++) {
+                for (let x = 0; x < currentShape[y].length; x++) {
+                    if (currentShape[y][x]) {
+                        const newX = currentX + x + dx;
+                        const newY = currentY + y + dy;
+                        if (newX < 0 || newX >= cols || newY >= rows || board[newY]?.[newX]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        // ฟังก์ชันหมุนบล็อก
+        function rotateShape() {
+            const rotatedShape = [];
+            for (let x = 0; x < currentShape[0].length; x++) {
+                rotatedShape.push([]);
+                for (let y = currentShape.length - 1; y >= 0; y--) {
+                    rotatedShape[x].push(currentShape[y][x]);
+                }
+            }
+            currentShape = rotatedShape;
+
+            // ตรวจสอบไม่ให้บล็อกหมุนออกนอกกรอบ
+            if (currentX + currentShape[0].length > cols) {
+                currentX = cols - currentShape[0].length;
+            }
+        }
+
+        // ฟังก์ชันวาดบล็อกถัดไป
+        function drawNextBlock() {
+            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            const offsetX = Math.floor((nextCanvas.width / grid - nextBlock.shape[0].length) / 2);
+            const offsetY = Math.floor((nextCanvas.height / grid - nextBlock.shape.length) / 2);
+            drawShape(nextCtx, nextBlock.shape, nextBlock.color, offsetX, offsetY);
+        }
+
+        // ฟังก์ชันตรวจสอบว่าเกมแพ้
+        function checkGameOver() {
+            for (let x = 0; x < currentShape[0].length; x++) {
+                if (currentShape[0][x] && board[currentY][currentX + x]) {
+                    const playerName = prompt("Game Over! Your score: " + score + "\nEnter your name:");
+                    if (playerName) {
+                        updateLeaderboard(playerName, score);
+                    }
+                    document.location.reload();
+                }
+            }
+        }
+
+        // ฟังก์ชันอัปเดตตารางคะแนน
+        function updateLeaderboard(name, score) {
+            const leaderboardTable = document.getElementById('leaderboardTable').querySelector('tbody');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `<td></td><td>${name}</td><td>${score}</td>`;
+            leaderboardTable.appendChild(newRow);
+
+            // จัดเรียงคะแนน
+            const rows = Array.from(leaderboardTable.querySelectorAll('tr'));
+            rows.sort((a, b) => parseInt(b.cells[2].innerText) - parseInt(a.cells[2].innerText));
+            leaderboardTable.innerHTML = '';
+            rows.forEach((row, index) => {
+                row.cells[0].innerText = index + 1; // อัปเดตลำดับ
+                leaderboardTable.appendChild(row);
+            });
+        }
+
+        // อัปเดตเกม
+        function updateGame() {
+            frameCount++;
+            if (frameCount % 30 === 0) { // ทำให้เกมช้าลง
+                if (canMove(0, 1)) {
+                    currentY++; // บล็อกตกลงมา
+                } else {
+                    mergeBlockToBoard(); // รวมบล็อกเข้ากับกระดาน
+                    checkFullRows(); // ตรวจสอบแถวเต็ม
+                    currentY = 0;
+                    currentX = Math.floor(cols / 2) - 1;
+                    currentBlock = nextBlock;
+                    currentShape = currentBlock.shape;
+                    currentColor = currentBlock.color;
+                    nextBlock = getRandomBlock();
+                    drawNextBlock(); // วาดบล็อกถัดไป
+                    checkGameOver(); // ตรวจสอบว่าเกมแพ้
+                }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawBoard();
+            drawShape(ctx, currentShape, currentColor, currentX, currentY);
+            requestAnimationFrame(updateGame);
+        }
+
+        // เริ่มเกม
+        drawNextBlock(); // วาดบล็อกถัดไปครั้งแรก
+        updateGame();
+    </script>
+</body>
+</html>
